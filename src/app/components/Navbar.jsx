@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 
-import styles from "./Navbar.module.css";  // <- This is how you import CSS specific to this component
-
+import styles from "./Navbar.module.css";  
+import DarkModeToggle from './DarkModeToggle';
 export default function Navbar() {
   return (
     <nav className={styles.navbar}>
@@ -11,6 +11,7 @@ export default function Navbar() {
         <li><a className={styles.link} href="/resume">Resume</a></li>
         <li><a className={styles.link} href="/blog">Blog</a></li>
       </ul>
+    <DarkModeToggle />
     </nav>
   );
 }

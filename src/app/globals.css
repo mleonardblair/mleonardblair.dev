@@ -1,4 +1,13 @@
 @import "tailwindcss";
+html {
+  color-scheme: light dark;
+}
+/* Set dark mode overrides using the `html.dark` class */
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #3c3c3c;
+}
 
 :root {
   --background: #ffffff;
