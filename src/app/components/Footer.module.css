@@ -1,0 +1,18 @@
+/* Dark mode override */
+@media (prefers-color-scheme: dark) {
+  .footer {
+    color:#f5f5f5;
+    background-color: #3c3c3c;
+
+  }
+}
+
+.footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--surface);
+    color: var(--foreground);
+    font-size: 0.9rem;
+    margin-top: 2rem;
+  }
+  

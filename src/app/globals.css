@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #f5f5f5; /* For navbar/footer backgrounds */
 }
 
 @theme inline {
@@ -16,6 +17,7 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #3c3c3c; /* For navbar/footer backgrounds */
   }
 }
 
