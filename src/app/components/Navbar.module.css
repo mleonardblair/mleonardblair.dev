@@ -13,9 +13,40 @@
   padding: 0;
   margin: 0;
 }
+.navLinks a {
+  text-decoration: none;
+  color: var(--foreground);
+  font-weight: bold;
+  position: relative;
+}
+.navLinks a:hover{
+  color: color-mix(in srgb, var(--foreground) 50%, transparent); /* Change color on hover */
+}
+.navLinks a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0;
+  height: 4px;
+  background-color: var(--foreground);
+  transition: width 0.3s ease;
+}
+
+
+.navLinks a:hover::after {
+  width: 100%; /* Expand underline on hover */
+}
 
 .link {
   text-decoration: none;
   color: var(--foreground);
   font-weight: bold;
+}
+
+.responsiveImage {
+  height: 48px;        /* Fixed or max-height recommended in navbars */
+  width: auto;
+  object-fit: contain; /* or cover */
+  border-radius:140px;
 }
