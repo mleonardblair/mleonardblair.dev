@@ -11,6 +11,7 @@ export default function HeroText() {
   const [phase, setPhase] = useState('main');
   const isEdgeRef = useRef(false);
   const timeoutRef = useRef(null);
+  const animationFrameIdRef = useRef(null);
 
   useEffect(() => {
     const userAgent = navigator.userAgent;
@@ -18,41 +19,56 @@ export default function HeroText() {
       isEdgeRef.current = true;
       console.log("Microsoft Edge detected - applying Edge-specific optimizations for typewriter effect");
     }
+    
+    startTypewriter();
+    
+    return () => {
+      if (isEdgeRef.current && timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      } else if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
   }, []);
-
-  useEffect(() => {
-    let animationFrameId;
-    let lastTime = 0;
-    const typingInterval = isEdgeRef.current ? 120 : 75; // ms between characters
+  
+  const startTypewriter = () => {
+    let currentText = '';
+    let currentIndex = 0;
+    let currentPhase = 'main';
+    
+    setDisplayedText('');
+    setIndex(0);
+    setPhase('main');
     
     if (isEdgeRef.current) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      
-      if ((phase === 'main' && index < mainText.length) || 
-          (phase === 'second' && index < secondText.length)) {
-        
-        timeoutRef.current = setTimeout(() => {
-          if (phase === 'main' && index < mainText.length) {
-            setDisplayedText(prev => prev + mainText[index]);
-            setIndex(prev => prev + 1);
-          } else if (phase === 'main') {
-            setPhase('second');
-            setIndex(0);
-          } else if (phase === 'second' && index < secondText.length) {
-            setDisplayedText(prev => prev + secondText[index]);
-            setIndex(prev => prev + 1);
-          }
-        }, typingInterval);
-      }
-      
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
+      const typeNextCharacter = () => {
+        if (currentPhase === 'main' && currentIndex < mainText.length) {
+          currentText += mainText[currentIndex];
+          setDisplayedText(currentText);
+          currentIndex++;
+          setIndex(currentIndex);
+          timeoutRef.current = setTimeout(typeNextCharacter, 120); // Slower for Edge
+        } else if (currentPhase === 'main') {
+          currentPhase = 'second';
+          setPhase('second');
+          currentIndex = 0;
+          setIndex(0);
+          timeoutRef.current = setTimeout(typeNextCharacter, 120);
+        } else if (currentPhase === 'second' && currentIndex < secondText.length) {
+          currentText += secondText[currentIndex];
+          setDisplayedText(currentText);
+          currentIndex++;
+          setIndex(currentIndex);
+          timeoutRef.current = setTimeout(typeNextCharacter, 120);
         }
       };
-    } else {
+      
+      timeoutRef.current = setTimeout(typeNextCharacter, 120);
+    } 
+    else {
+      let lastTime = 0;
+      const typingInterval = 75; // ms between characters
+      
       const animate = (timestamp) => {
         if (!lastTime) lastTime = timestamp;
         const elapsed = timestamp - lastTime;
@@ -60,31 +76,33 @@ export default function HeroText() {
         if (elapsed >= typingInterval) {
           lastTime = timestamp;
           
-          if (phase === 'main' && index < mainText.length) {
-            setDisplayedText(prev => prev + mainText[index]);
-            setIndex(prev => prev + 1);
-          } else if (phase === 'main') {
+          if (currentPhase === 'main' && currentIndex < mainText.length) {
+            currentText += mainText[currentIndex];
+            setDisplayedText(currentText);
+            currentIndex++;
+            setIndex(currentIndex);
+          } else if (currentPhase === 'main') {
+            currentPhase = 'second';
             setPhase('second');
+            currentIndex = 0;
             setIndex(0);
-          } else if (phase === 'second' && index < secondText.length) {
-            setDisplayedText(prev => prev + secondText[index]);
-            setIndex(prev => prev + 1);
+          } else if (currentPhase === 'second' && currentIndex < secondText.length) {
+            currentText += secondText[currentIndex];
+            setDisplayedText(currentText);
+            currentIndex++;
+            setIndex(currentIndex);
           }
         }
         
-        if ((phase === 'main' && index < mainText.length) || 
-            (phase === 'second' && index < secondText.length)) {
-          animationFrameId = requestAnimationFrame(animate);
+        if ((currentPhase === 'main' && currentIndex < mainText.length) || 
+            (currentPhase === 'second' && currentIndex < secondText.length)) {
+          animationFrameIdRef.current = requestAnimationFrame(animate);
         }
       };
       
-      animationFrameId = requestAnimationFrame(animate);
-      
-      return () => {
-        cancelAnimationFrame(animationFrameId);
-      };
+      animationFrameIdRef.current = requestAnimationFrame(animate);
     }
-  }, [index, phase, mainText, secondText, isEdgeRef]);
+  };
 
   // Split the output into two parts so we can style 'Developer'
   const fullOutput = displayedText;
