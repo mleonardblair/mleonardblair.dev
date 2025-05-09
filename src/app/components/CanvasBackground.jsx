@@ -2,7 +2,7 @@
 import { useRef, useEffect } from 'react';
 
 export default function CanvasBackground({
-  lineSpacing = 40,
+  lineSpacing = 60,
   lineThickness = 0.75,
   particleSpeed = 1.2,
   particlesPerLine = 1,
@@ -41,7 +41,7 @@ export default function CanvasBackground({
 
       // Diagonal lines
       bgCtx.clearRect(0, 0, width, height);
-      bgCtx.strokeStyle = `rgba(${fgRGB}, 0.07w5)`;
+      bgCtx.strokeStyle = `rgba(${fgRGB}, 0.075)`;
       bgCtx.lineWidth = lineThickness;
 
       for (let i = -height; i < width + height; i += lineSpacing) {

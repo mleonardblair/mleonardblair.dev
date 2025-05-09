@@ -1,6 +1,6 @@
 @import "tailwindcss";
 html {
-  color-scheme: light dark;
+  /* color-scheme: light dark; */
     scroll-behavior: smooth;
   
 }
@@ -27,10 +27,13 @@ html.dark {
 
 @media (prefers-color-scheme: dark) {
   :root {
+
+    html:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
     --surface: #3c3c3c; /* For navbar/footer backgrounds */
   }
+}
 }
 
 body {

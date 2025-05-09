@@ -1,3 +1,4 @@
+'use client';
 // src/components/Footer.jsx
 import styles from "./Footer.module.css";  // <- This is how you import CSS specific to this component
 

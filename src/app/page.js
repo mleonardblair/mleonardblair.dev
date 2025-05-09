@@ -32,7 +32,7 @@ export default function Home() {
         <button
           onClick={() =>
             window.open(
-              "https://docs.google.com/document/d/1_mc1uY2xwkGuyaW0NKGPHwQrZZWwGv7m1bFOQMEqLSM/edit?usp=sharing",
+              "https://drive.google.com/file/d/1KwuzyiMzYyZhIqzlbHTDYX_0JB7yeYLQ/view?usp=sharing",
               "_blank",
               "noopener,noreferrer"
             )
