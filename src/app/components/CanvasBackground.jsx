@@ -14,6 +14,7 @@ export default function CanvasBackground({
   const animationRef = useRef(null);
   const particlesRef = useRef([]);
   const performanceRef = useRef('high'); // Track device performance level
+  const isEdgeRef = useRef(false); // Track if browser is Edge
 
   function hexToRgb(hex) {
     hex = hex.replace('#', '');
@@ -26,12 +27,27 @@ export default function CanvasBackground({
   }
 
   useEffect(() => {
+    const detectEdge = () => {
+      const userAgent = navigator.userAgent;
+      if (userAgent.indexOf("Edg") !== -1) {
+        isEdgeRef.current = true;
+        console.log("Microsoft Edge detected - applying Edge-specific optimizations");
+        performanceRef.current = 'low';
+        return true;
+      }
+      return false;
+    };
+
     const bgCanvas = bgCanvasRef.current;
     const fgCanvas = fgCanvasRef.current;
-    const bgCtx = bgCanvas.getContext('2d');
-    const fgCtx = fgCanvas.getContext('2d');
+    const bgCtx = bgCanvas.getContext('2d', { alpha: false }); // Optimize for non-transparent canvas
+    const fgCtx = fgCanvas.getContext('2d', { alpha: true });
     
     const detectPerformance = () => {
+      if (detectEdge()) {
+        return;
+      }
+      
       try {
         const testStart = performance.now();
         for (let i = 0; i < 100; i++) {
@@ -61,35 +77,39 @@ export default function CanvasBackground({
     const resize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      bgCanvas.width = fgCanvas.width = width;
-      bgCanvas.height = fgCanvas.height = height;
+      
+      bgCanvas.width = fgCanvas.width = Math.floor(width);
+      bgCanvas.height = fgCanvas.height = Math.floor(height);
 
       const fgColor = getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim();
       const fgRGB = hexToRgb(fgColor);
 
       // Diagonal lines
       bgCtx.clearRect(0, 0, width, height);
-      bgCtx.strokeStyle = `rgba(${fgRGB}, 0.07w5)`;
+      
+      if (isEdgeRef.current) {
+        bgCtx.strokeStyle = `rgb(${fgRGB})`;
+        bgCtx.globalAlpha = 0.075; // Use globalAlpha instead of rgba for Edge
+      } else {
+        bgCtx.strokeStyle = `rgba(${fgRGB}, 0.075)`;
+      }
+      
       bgCtx.lineWidth = lineThickness;
 
-      for (let i = -height; i < width + height; i += lineSpacing) {
-        const x1 = Math.round(i);
-        const x2 = Math.round(i + height);
+      const effectiveLineSpacing = isEdgeRef.current ? lineSpacing * 2 : lineSpacing;
+
+      for (let i = -height; i < width + height; i += effectiveLineSpacing) {
+        const x1 = Math.floor(i);
+        const x2 = Math.floor(i + height);
         bgCtx.beginPath();
         bgCtx.moveTo(x1, 0);
         bgCtx.lineTo(x2, height);
         bgCtx.stroke();
       }
 
-    //   // Vertical fade
-    //   const gradient = bgCtx.createLinearGradient(0, 0, 0, height);
-    //   gradient.addColorStop(0.0, 'rgba(0,0,0,1)');
-    //   gradient.addColorStop(0.4, 'rgba(0,0,0,0.6)');
-    //   gradient.addColorStop(1.0, 'rgba(0,0,0,0)');
-    //   bgCtx.globalCompositeOperation = 'destination-in';
-    //   bgCtx.fillStyle = gradient;
-    //   bgCtx.fillRect(0, 0, width, height);
-    //   bgCtx.globalCompositeOperation = 'source-over';
+      if (isEdgeRef.current) {
+        bgCtx.globalAlpha = 1.0;
+      }
 
       // Particles - adjust based on performance
       const particles = [];
@@ -99,26 +119,35 @@ export default function CanvasBackground({
       let maxParticlesPerLine = particlesPerLine;
       let trailMultiplier = 1;
       
-      if (performanceLevel === 'low') {
-        particleDensity = 0.1;  // 60% fewer particles
+      if (isEdgeRef.current) {
+        particleDensity = 0.05;  // 80% fewer particles for Edge
+        maxParticlesPerLine = 1; // Only one particle per line for Edge
+        trailMultiplier = 0.3;   // Much shorter trails for Edge
+      } else if (performanceLevel === 'low') {
+        particleDensity = 0.1;   // 60% fewer particles
         maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.5));
-        trailMultiplier = 0.5;  // Shorter trails
+        trailMultiplier = 0.5;   // Shorter trails
       } else if (performanceLevel === 'medium') {
-        particleDensity = 0.15; // 40% fewer particles
+        particleDensity = 0.15;  // 40% fewer particles
         maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.75));
-        trailMultiplier = 0.75; // Slightly shorter trails
+        trailMultiplier = 0.75;  // Slightly shorter trails
       }
       
-      for (let i = -height; i < width + height; i += lineSpacing) {
+      // Edge-specific optimization: Use larger spacing between particles
+      const effectiveSpacing = isEdgeRef.current ? lineSpacing * 3 : lineSpacing;
+      
+      for (let i = -height; i < width + height; i += effectiveSpacing) {
         if (Math.random() < particleDensity) {
           for (let j = 0; j < maxParticlesPerLine; j++) {
-            const offset = Math.random() * height;
+            const offset = Math.floor(Math.random() * height); // Integer offset for Edge
             particles.push({
-                baseX: i,
+                baseX: Math.floor(i), // Integer coordinates for Edge
                 offset,
                 history: [],
-                speed: Math.random() * 2 + 1,  // Reduced speed range
-                trail: Math.floor((Math.random() * 30 + 20) * trailMultiplier)  // Shorter trails
+                speed: isEdgeRef.current ? 
+                  Math.random() * 1 + 0.5 :  // 0.5-1.5 for Edge
+                  Math.random() * 2 + 1,     // 1-3 for other browsers
+                trail: Math.floor((Math.random() * 30 + 20) * trailMultiplier)
               });
           }
         }
@@ -133,61 +162,107 @@ export default function CanvasBackground({
       const width = fgCanvas.width;
       const height = fgCanvas.height;
       const performanceLevel = performanceRef.current;
+      const isEdge = isEdgeRef.current;
 
       fgCtx.globalCompositeOperation = 'source-over';
       fgCtx.clearRect(0, 0, width, height);
 
-      fgCtx.globalCompositeOperation = 'lighter';
+      // Edge-specific optimization: Use 'source-over' instead of 'lighter' for Edge
+      fgCtx.globalCompositeOperation = isEdge ? 'source-over' : 'lighter';
+      
       const r = 0, g = 200, b = 255;
       
-      const useShadows = performanceLevel !== 'low';
-      const skipFrames = performanceLevel === 'low' ? 3 : (performanceLevel === 'medium' ? 2 : 1);
+      // Edge-specific optimization: Never use shadows in Edge
+      const useShadows = !isEdge && performanceLevel !== 'low';
       
-      if (animationRef.current % skipFrames !== 0 && skipFrames > 1) {
+      // Edge-specific optimization: Use more aggressive frame skipping for Edge
+      const skipFrames = isEdge ? 4 : 
+                        (performanceLevel === 'low' ? 3 : 
+                        (performanceLevel === 'medium' ? 2 : 1));
+      
+      // Skip frames for performance
+      if (typeof animationRef.current === 'number' && 
+          animationRef.current % skipFrames !== 0 && 
+          skipFrames > 1) {
         animationRef.current = requestAnimationFrame(draw);
         animationRef.current++;
         return;
       }
 
-      for (let p of particlesRef.current) {
-        const x = p.baseX + p.offset;
-        const y = p.offset;
+      // Edge-specific optimization: Limit the number of particles processed per frame
+      const particlesToProcess = isEdge ? 
+        particlesRef.current.slice(0, 10) : // Only process 10 particles at a time in Edge
+        particlesRef.current;
+      
+      for (let p of particlesToProcess) {
+        const x = Math.floor(p.baseX + p.offset); // Integer coordinates for Edge
+        const y = Math.floor(p.offset);           // Integer coordinates for Edge
 
         p.history.unshift({ x, y });
         if (p.history.length > p.trail) p.history.pop();
 
-        // 🌠 Glow blur - only on high performance devices
+        // 🌠 Glow blur - only on high performance devices and never in Edge
         if (useShadows) {
           fgCtx.shadowBlur = performanceLevel === 'high' ? 8 : 4;
           fgCtx.shadowColor = `rgba(${r},${g},${b},0.4)`;
         }
 
-        // ✨ Draw trail - optimize by skipping points on low performance
-        const skipPoints = performanceLevel === 'low' ? 2 : (performanceLevel === 'medium' ? 1 : 0);
+        // Edge-specific optimization: Skip more points and use simpler rendering in Edge
+        const skipPoints = isEdge ? 3 : 
+                          (performanceLevel === 'low' ? 2 : 
+                          (performanceLevel === 'medium' ? 1 : 0));
         
-        for (let i = p.history.length - 1; i >= 0; i -= (skipPoints + 1)) {
+        // Edge-specific optimization: Use a simplified trail rendering for Edge
+        if (isEdge) {
+          // Draw a simple line instead of individual circles for Edge
+          if (p.history.length > 1) {
+            fgCtx.beginPath();
+            fgCtx.moveTo(p.history[0].x, p.history[0].y);
+            
+            for (let i = Math.min(5, p.history.length - 1); i > 0; i -= 2) {
+              fgCtx.lineTo(p.history[i].x, p.history[i].y);
+            }
+            
+            fgCtx.strokeStyle = 'rgba(100,150,255,0.4)';
+            fgCtx.lineWidth = lineThickness;
+            fgCtx.stroke();
+          }
+        } else {
+          // Normal rendering for other browsers
+          for (let i = p.history.length - 1; i >= 0; i -= (skipPoints + 1)) {
             const pt = p.history[i];
             const t = i / (p.history.length - 1); // 0 (newest) → 1 (oldest)
-          
+            
             // Interpolate blue → purple
             const r = Math.round(0 + (160 - 0) * t);     // 0 → 160
             const g = Math.round(200 - 100 * t);         // 200 → 100
             const b = 255;                               // constant blue
-          
+            
             const radius = lineThickness;
             const offsetX = Math.sin(i * 0.4) * curveAmount;
-          
+            
             fgCtx.fillStyle = `rgba(${r},${g},${b},0.6)`; // strong trail
             fgCtx.beginPath();
             fgCtx.arc(pt.x + offsetX, pt.y, radius, 0, Math.PI * 2);
             fgCtx.fill();
           }
+        }
           
-        // 💥 Head flare
-        fgCtx.fillStyle = 'rgba(160,100,255,0.8)';
+        // 💥 Head flare - simplified for Edge
+        if (isEdge) {
+          fgCtx.fillStyle = 'rgb(160,100,255)';
+          fgCtx.globalAlpha = 0.8;
+        } else {
+          fgCtx.fillStyle = 'rgba(160,100,255,0.8)';
+        }
+        
         fgCtx.beginPath();
-        fgCtx.arc(x, y, lineThickness * 1.25, 0, Math.PI * 2);
+        fgCtx.arc(x, y, lineThickness * (isEdge ? 1 : 1.25), 0, Math.PI * 2);
         fgCtx.fill();
+        
+        if (isEdge) {
+          fgCtx.globalAlpha = 1.0;
+        }
 
         // Reset shadow
         if (useShadows) {
@@ -198,21 +273,33 @@ export default function CanvasBackground({
         p.offset += p.speed;
         const buffer = trailLength * 5;
         if (x > width + height + buffer || y > height + buffer) {
-          p.offset = -Math.random() * height;
+          p.offset = -Math.floor(Math.random() * height); // Integer offset for Edge
           p.history = [];
         }
       }
 
-      animationRef.current = requestAnimationFrame(draw);
-      if (skipFrames > 1) {
-        animationRef.current++;
+      // Edge-specific optimization: Use setTimeout instead of requestAnimationFrame for Edge
+      if (isEdge) {
+        animationRef.current = setTimeout(() => {
+          requestAnimationFrame(draw);
+        }, 16); // ~60fps
+      } else {
+        animationRef.current = requestAnimationFrame(draw);
+        if (skipFrames > 1) {
+          animationRef.current++;
+        }
       }
     };
 
     draw();
 
     return () => {
-      cancelAnimationFrame(animationRef.current);
+      // Edge-specific cleanup: Clear timeout if we're using setTimeout
+      if (isEdgeRef.current && typeof animationRef.current === 'number') {
+        clearTimeout(animationRef.current);
+      } else {
+        cancelAnimationFrame(animationRef.current);
+      }
       window.removeEventListener('resize', resize);
     };
   }, [
