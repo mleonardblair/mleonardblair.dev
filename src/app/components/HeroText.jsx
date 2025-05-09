@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import styles from './HeroText.module.css';
 
 export default function HeroText() {
-  const mainText = "Java and React/Next.js";
-  const secondText = " Developer";
+  const mainText = ".NET and React/Next.js";
+  const secondText = " Developer ";
 
   const [displayedText, setDisplayedText] = useState('');
   const [index, setIndex] = useState(0);
