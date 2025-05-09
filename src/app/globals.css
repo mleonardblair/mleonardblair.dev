@@ -1,6 +1,8 @@
 @import "tailwindcss";
 html {
   color-scheme: light dark;
+    scroll-behavior: smooth;
+  
 }
 /* Set dark mode overrides using the `html.dark` class */
 html.dark {
@@ -11,6 +13,7 @@ html.dark {
 
 :root {
   --background: #ffffff;
+  --accent-color: #2f81f7;
   --foreground: #171717;
   --surface: #f5f5f5; /* For navbar/footer backgrounds */
 }

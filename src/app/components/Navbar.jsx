@@ -12,8 +12,6 @@ export default function Navbar() {
       />
       <ul className={styles.navLinks}>
         <li><a className={styles.link} href="#">Home</a></li>
-        <li><a className={styles.link} href="#resume">Resume</a></li>
-        <li><a className={styles.link} href="#blog">Blog</a></li>
       </ul>
     <DarkModeToggle />
     </nav>
