@@ -11,25 +11,41 @@ export default function HeroText() {
   const [phase, setPhase] = useState('main');
 
   useEffect(() => {
-    let timeout;
-
-    if (phase === 'main' && index < mainText.length) {
-      timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + mainText[index]);
-        setIndex(prev => prev + 1);
-      }, 75);
-    } else if (phase === 'main') {
-      setPhase('second');
-      setIndex(0);
-    } else if (phase === 'second' && index < secondText.length) {
-      timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + secondText[index]);
-        setIndex(prev => prev + 1);
-      }, 75);
-    }
-
-    return () => clearTimeout(timeout);
-  }, [index, phase]);
+    let animationFrameId;
+    let lastTime = 0;
+    const typingInterval = 75; // ms between characters
+    
+    const animate = (timestamp) => {
+      if (!lastTime) lastTime = timestamp;
+      const elapsed = timestamp - lastTime;
+      
+      if (elapsed >= typingInterval) {
+        lastTime = timestamp;
+        
+        if (phase === 'main' && index < mainText.length) {
+          setDisplayedText(prev => prev + mainText[index]);
+          setIndex(prev => prev + 1);
+        } else if (phase === 'main') {
+          setPhase('second');
+          setIndex(0);
+        } else if (phase === 'second' && index < secondText.length) {
+          setDisplayedText(prev => prev + secondText[index]);
+          setIndex(prev => prev + 1);
+        }
+      }
+      
+      if ((phase === 'main' && index < mainText.length) || 
+          (phase === 'second' && index < secondText.length)) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+    
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [index, phase, mainText, secondText]);
 
   // Split the output into two parts so we can style 'Developer'
   const fullOutput = displayedText;

@@ -13,6 +13,7 @@ export default function CanvasBackground({
   const fgCanvasRef = useRef(null);
   const animationRef = useRef(null);
   const particlesRef = useRef([]);
+  const performanceRef = useRef('high'); // Track device performance level
 
   function hexToRgb(hex) {
     hex = hex.replace('#', '');
@@ -29,6 +30,33 @@ export default function CanvasBackground({
     const fgCanvas = fgCanvasRef.current;
     const bgCtx = bgCanvas.getContext('2d');
     const fgCtx = fgCanvas.getContext('2d');
+    
+    const detectPerformance = () => {
+      try {
+        const testStart = performance.now();
+        for (let i = 0; i < 100; i++) {
+          fgCtx.beginPath();
+          fgCtx.arc(50, 50, 10, 0, Math.PI * 2);
+          fgCtx.fill();
+        }
+        const testTime = performance.now() - testStart;
+        
+        if (testTime > 50) {
+          performanceRef.current = 'low';
+        } else if (testTime > 20) {
+          performanceRef.current = 'medium';
+        } else {
+          performanceRef.current = 'high';
+        }
+        
+        console.log(`Device performance: ${performanceRef.current} (${testTime.toFixed(2)}ms)`);
+      } catch (e) {
+        performanceRef.current = 'medium';
+        console.log('Performance test failed, defaulting to medium');
+      }
+    };
+    
+    detectPerformance();
 
     const resize = () => {
       const width = window.innerWidth;
@@ -63,18 +91,34 @@ export default function CanvasBackground({
     //   bgCtx.fillRect(0, 0, width, height);
     //   bgCtx.globalCompositeOperation = 'source-over';
 
-      // Particles
+      // Particles - adjust based on performance
       const particles = [];
+      const performanceLevel = performanceRef.current;
+      
+      let particleDensity = 0.25; // Default
+      let maxParticlesPerLine = particlesPerLine;
+      let trailMultiplier = 1;
+      
+      if (performanceLevel === 'low') {
+        particleDensity = 0.1;  // 60% fewer particles
+        maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.5));
+        trailMultiplier = 0.5;  // Shorter trails
+      } else if (performanceLevel === 'medium') {
+        particleDensity = 0.15; // 40% fewer particles
+        maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.75));
+        trailMultiplier = 0.75; // Slightly shorter trails
+      }
+      
       for (let i = -height; i < width + height; i += lineSpacing) {
-        if (Math.random() < 0.25) {
-          for (let j = 0; j < particlesPerLine; j++) {
+        if (Math.random() < particleDensity) {
+          for (let j = 0; j < maxParticlesPerLine; j++) {
             const offset = Math.random() * height;
             particles.push({
                 baseX: i,
                 offset,
                 history: [],
-                speed: Math.random() * 3 + 2,            // 0.6 → 1.4 px/frame
-                trail: Math.floor(Math.random() * 50 + 40)  // 16 → 28
+                speed: Math.random() * 2 + 1,  // Reduced speed range
+                trail: Math.floor((Math.random() * 30 + 20) * trailMultiplier)  // Shorter trails
               });
           }
         }
@@ -88,12 +132,22 @@ export default function CanvasBackground({
     const draw = () => {
       const width = fgCanvas.width;
       const height = fgCanvas.height;
+      const performanceLevel = performanceRef.current;
 
       fgCtx.globalCompositeOperation = 'source-over';
       fgCtx.clearRect(0, 0, width, height);
 
       fgCtx.globalCompositeOperation = 'lighter';
       const r = 0, g = 200, b = 255;
+      
+      const useShadows = performanceLevel !== 'low';
+      const skipFrames = performanceLevel === 'low' ? 3 : (performanceLevel === 'medium' ? 2 : 1);
+      
+      if (animationRef.current % skipFrames !== 0 && skipFrames > 1) {
+        animationRef.current = requestAnimationFrame(draw);
+        animationRef.current++;
+        return;
+      }
 
       for (let p of particlesRef.current) {
         const x = p.baseX + p.offset;
@@ -102,12 +156,16 @@ export default function CanvasBackground({
         p.history.unshift({ x, y });
         if (p.history.length > p.trail) p.history.pop();
 
-        // 🌠 Glow blur
-        fgCtx.shadowBlur = 8;
-        fgCtx.shadowColor = `rgba(${r},${g},${b},0.4)`;
+        // 🌠 Glow blur - only on high performance devices
+        if (useShadows) {
+          fgCtx.shadowBlur = performanceLevel === 'high' ? 8 : 4;
+          fgCtx.shadowColor = `rgba(${r},${g},${b},0.4)`;
+        }
 
-        // ✨ Draw trail
-        for (let i = p.history.length - 1; i >= 0; i--) {
+        // ✨ Draw trail - optimize by skipping points on low performance
+        const skipPoints = performanceLevel === 'low' ? 2 : (performanceLevel === 'medium' ? 1 : 0);
+        
+        for (let i = p.history.length - 1; i >= 0; i -= (skipPoints + 1)) {
             const pt = p.history[i];
             const t = i / (p.history.length - 1); // 0 (newest) → 1 (oldest)
           
@@ -132,8 +190,10 @@ export default function CanvasBackground({
         fgCtx.fill();
 
         // Reset shadow
-        fgCtx.shadowBlur = 0;
-        fgCtx.shadowColor = 'transparent';
+        if (useShadows) {
+          fgCtx.shadowBlur = 0;
+          fgCtx.shadowColor = 'transparent';
+        }
 
         p.offset += p.speed;
         const buffer = trailLength * 5;
@@ -144,6 +204,9 @@ export default function CanvasBackground({
       }
 
       animationRef.current = requestAnimationFrame(draw);
+      if (skipFrames > 1) {
+        animationRef.current++;
+      }
     };
 
     draw();
