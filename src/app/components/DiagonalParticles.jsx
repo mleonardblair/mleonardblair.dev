@@ -1,11 +1,21 @@
-"use client"
-import { useEffect, useRef } from "react";
+"use client";
+import { useEffect, useRef, useState } from "react";
 
 export default function DiagonalParticles() {
   const canvasRef = useRef(null);
   const intervalRef = useRef(null);
+  const [shouldRender, setShouldRender] = useState(true);
 
   useEffect(() => {
+    const ua = navigator.userAgent;
+    const isEdge = /Edg\//.test(ua);
+    const isChrome = /Chrome/.test(ua) && !isEdge;
+
+    if (isEdge || isChrome) {
+      setShouldRender(false);
+      return;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -53,6 +63,8 @@ export default function DiagonalParticles() {
       window.removeEventListener("resize", resize);
     };
   }, []);
+
+  if (!shouldRender) return null;
 
   return (
     <canvas
