@@ -9,27 +9,12 @@ export default function HeroText() {
   const [displayedText, setDisplayedText] = useState('');
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState('main');
+  const [typingComplete, setTypingComplete] = useState(false);
 
   useEffect(() => {
-    let timeout;
-
-    if (phase === 'main' && index < mainText.length) {
-      timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + mainText[index]);
-        setIndex(prev => prev + 1);
-      }, 75);
-    } else if (phase === 'main') {
-      setPhase('second');
-      setIndex(0);
-    } else if (phase === 'second' && index < secondText.length) {
-      timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + secondText[index]);
-        setIndex(prev => prev + 1);
-      }, 75);
-    }
-
-    return () => clearTimeout(timeout);
-  }, [index, phase]);
+    setTypingComplete(true);
+    setDisplayedText(mainText + secondText);
+  }, []);
 
   // Split the output into two parts so we can style 'Developer'
   const fullOutput = displayedText;
@@ -37,18 +22,26 @@ export default function HeroText() {
   const mainPart = fullOutput.slice(0, splitPoint);
   const developerPart = fullOutput.slice(splitPoint); // ' Developer' in color
 
+  const fullMainText = ".NET and React/Next.js";
+  const fullSecondText = " Developer ";
+  
   return (
-    <h1
-      style={{
-        fontSize: "2rem",
-        fontWeight: "bold",
-        minWidth: "38ch",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {mainPart}
-      <span style={{ color: 'var(--accent-color)' }}>{developerPart}</span>
-      <span className={styles.blink}>|</span>
-    </h1>
+    <div className="w-full">
+      <h1
+        style={{
+          fontSize: "2rem",
+          fontWeight: "bold",
+        }}
+        className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-1"
+      >
+        <div className="whitespace-nowrap">
+          {typingComplete ? fullMainText : mainPart}
+        </div>
+        <div className="whitespace-nowrap text-[var(--accent-color)]">
+          {typingComplete ? fullSecondText : developerPart}
+          <span className={styles.blink}>|</span>
+        </div>
+      </h1>
+    </div>
   );
 }

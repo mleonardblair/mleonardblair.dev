@@ -20,10 +20,10 @@ export default function Home() {
       curveAmount={0}
     />
 <section id="hero" className="min-h-screen flex items-center justify-center px-6">
-  <div className="flex flex-wrap items-center justify-center gap-24 w-full max-w-8xl">
+  <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-6xl px-4 gap-8">
 
     {/* LEFT COLUMN - TEXT */}
-    <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left max-w-2xl min-h-[280px]">
+    <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left max-w-md min-h-[280px]">
       <h1 className="text-sm text-[var(--foreground)] mb-4">
         Hi, I&apos;m M. Leonard, a passionate software student.
       </h1>
@@ -53,7 +53,7 @@ export default function Home() {
     </div>
 
     {/* RIGHT COLUMN - IMAGE */}
-    <div className="w-64 h-64 flex-shrink-0">
+    <div className="w-64 h-64 flex-shrink-0 mb-8 sm:mb-0 mt-[-30px] sm:mt-0 justify-self-center md:justify-self-end">
       <img
         src="/me.png"
         alt="Your face"
