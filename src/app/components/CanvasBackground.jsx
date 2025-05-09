@@ -14,7 +14,7 @@ export default function CanvasBackground({
   const animationRef = useRef(null);
   const particlesRef = useRef([]);
   const performanceRef = useRef('high'); // Track device performance level
-  const isEdgeRef = useRef(false); // Track if browser is Edge
+  const disableParticlesRef = useRef(false); // Track if particles should be disabled completely
 
   function hexToRgb(hex) {
     hex = hex.replace('#', '');
@@ -27,14 +27,21 @@ export default function CanvasBackground({
   }
 
   useEffect(() => {
-    const detectEdge = () => {
+    const detectProblematicBrowsers = () => {
       const userAgent = navigator.userAgent;
+      
       if (userAgent.indexOf("Edg") !== -1) {
-        isEdgeRef.current = true;
-        console.log("Microsoft Edge detected - applying Edge-specific optimizations");
-        performanceRef.current = 'low';
+        console.log("Microsoft Edge detected - disabling particle effects");
+        disableParticlesRef.current = true;
         return true;
       }
+      
+      if (userAgent.indexOf("Chrome") !== -1 && userAgent.indexOf("Edg") === -1) {
+        console.log("Chrome detected - disabling particle effects");
+        disableParticlesRef.current = true;
+        return true;
+      }
+      
       return false;
     };
 
@@ -44,7 +51,7 @@ export default function CanvasBackground({
     const fgCtx = fgCanvas.getContext('2d', { alpha: true });
     
     const detectPerformance = () => {
-      if (detectEdge()) {
+      if (detectProblematicBrowsers()) {
         return;
       }
       
@@ -111,48 +118,43 @@ export default function CanvasBackground({
         bgCtx.globalAlpha = 1.0;
       }
 
-      // Particles - adjust based on performance
+      // Particles - disable for problematic browsers or adjust based on performance
       const particles = [];
       const performanceLevel = performanceRef.current;
       
-      let particleDensity = 0.25; // Default
-      let maxParticlesPerLine = particlesPerLine;
-      let trailMultiplier = 1;
-      
-      if (isEdgeRef.current) {
-        particleDensity = 0.05;  // 80% fewer particles for Edge
-        maxParticlesPerLine = 1; // Only one particle per line for Edge
-        trailMultiplier = 0.3;   // Much shorter trails for Edge
-      } else if (performanceLevel === 'low') {
-        particleDensity = 0.1;   // 60% fewer particles
-        maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.5));
-        trailMultiplier = 0.5;   // Shorter trails
-      } else if (performanceLevel === 'medium') {
-        particleDensity = 0.15;  // 40% fewer particles
-        maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.75));
-        trailMultiplier = 0.75;  // Slightly shorter trails
-      }
-      
-      // Edge-specific optimization: Use larger spacing between particles
-      const effectiveSpacing = isEdgeRef.current ? lineSpacing * 3 : lineSpacing;
-      
-      for (let i = -height; i < width + height; i += effectiveSpacing) {
-        if (Math.random() < particleDensity) {
-          for (let j = 0; j < maxParticlesPerLine; j++) {
-            const offset = Math.floor(Math.random() * height); // Integer offset for Edge
-            particles.push({
-                baseX: Math.floor(i), // Integer coordinates for Edge
-                offset,
-                history: [],
-                speed: isEdgeRef.current ? 
-                  Math.random() * 1 + 0.5 :  // 0.5-1.5 for Edge
-                  Math.random() * 2 + 1,     // 1-3 for other browsers
-                trail: Math.floor((Math.random() * 30 + 20) * trailMultiplier)
-              });
+      if (disableParticlesRef.current) {
+        particlesRef.current = [];
+      } else {
+        let particleDensity = 0.25; // Default
+        let maxParticlesPerLine = particlesPerLine;
+        let trailMultiplier = 1;
+        
+        if (performanceLevel === 'low') {
+          particleDensity = 0.1;   // 60% fewer particles
+          maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.5));
+          trailMultiplier = 0.5;   // Shorter trails
+        } else if (performanceLevel === 'medium') {
+          particleDensity = 0.15;  // 40% fewer particles
+          maxParticlesPerLine = Math.max(1, Math.floor(particlesPerLine * 0.75));
+          trailMultiplier = 0.75;  // Slightly shorter trails
+        }
+        
+        for (let i = -height; i < width + height; i += lineSpacing) {
+          if (Math.random() < particleDensity) {
+            for (let j = 0; j < maxParticlesPerLine; j++) {
+              const offset = Math.floor(Math.random() * height);
+              particles.push({
+                  baseX: Math.floor(i),
+                  offset,
+                  history: [],
+                  speed: Math.random() * 2 + 1,
+                  trail: Math.floor((Math.random() * 30 + 20) * trailMultiplier)
+                });
+            }
           }
         }
+        particlesRef.current = particles;
       }
-      particlesRef.current = particles;
     };
 
     resize();
@@ -162,23 +164,23 @@ export default function CanvasBackground({
       const width = fgCanvas.width;
       const height = fgCanvas.height;
       const performanceLevel = performanceRef.current;
-      const isEdge = isEdgeRef.current;
+      const disableParticles = disableParticlesRef.current;
 
       fgCtx.globalCompositeOperation = 'source-over';
       fgCtx.clearRect(0, 0, width, height);
 
-      // Edge-specific optimization: Use 'source-over' instead of 'lighter' for Edge
-      fgCtx.globalCompositeOperation = isEdge ? 'source-over' : 'lighter';
+      if (disableParticles) {
+        // Just request the next frame without drawing particles
+        animationRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
+      fgCtx.globalCompositeOperation = 'lighter';
       
       const r = 0, g = 200, b = 255;
-      
-      // Edge-specific optimization: Never use shadows in Edge
-      const useShadows = !isEdge && performanceLevel !== 'low';
-      
-      // Edge-specific optimization: Use more aggressive frame skipping for Edge
-      const skipFrames = isEdge ? 4 : 
-                        (performanceLevel === 'low' ? 3 : 
-                        (performanceLevel === 'medium' ? 2 : 1));
+      const useShadows = performanceLevel !== 'low';
+      const skipFrames = performanceLevel === 'low' ? 3 : 
+                        (performanceLevel === 'medium' ? 2 : 1);
       
       // Skip frames for performance
       if (typeof animationRef.current === 'number' && 
@@ -189,80 +191,45 @@ export default function CanvasBackground({
         return;
       }
 
-      // Edge-specific optimization: Limit the number of particles processed per frame
-      const particlesToProcess = isEdge ? 
-        particlesRef.current.slice(0, 10) : // Only process 10 particles at a time in Edge
-        particlesRef.current;
-      
-      for (let p of particlesToProcess) {
-        const x = Math.floor(p.baseX + p.offset); // Integer coordinates for Edge
-        const y = Math.floor(p.offset);           // Integer coordinates for Edge
+      for (let p of particlesRef.current) {
+        const x = Math.floor(p.baseX + p.offset);
+        const y = Math.floor(p.offset);
 
         p.history.unshift({ x, y });
         if (p.history.length > p.trail) p.history.pop();
 
-        // 🌠 Glow blur - only on high performance devices and never in Edge
         if (useShadows) {
           fgCtx.shadowBlur = performanceLevel === 'high' ? 8 : 4;
           fgCtx.shadowColor = `rgba(${r},${g},${b},0.4)`;
         }
 
-        // Edge-specific optimization: Skip more points and use simpler rendering in Edge
-        const skipPoints = isEdge ? 3 : 
-                          (performanceLevel === 'low' ? 2 : 
-                          (performanceLevel === 'medium' ? 1 : 0));
+        // Skip points based on performance level
+        const skipPoints = performanceLevel === 'low' ? 2 : 
+                          (performanceLevel === 'medium' ? 1 : 0);
         
-        // Edge-specific optimization: Use a simplified trail rendering for Edge
-        if (isEdge) {
-          // Draw a simple line instead of individual circles for Edge
-          if (p.history.length > 1) {
-            fgCtx.beginPath();
-            fgCtx.moveTo(p.history[0].x, p.history[0].y);
-            
-            for (let i = Math.min(5, p.history.length - 1); i > 0; i -= 2) {
-              fgCtx.lineTo(p.history[i].x, p.history[i].y);
-            }
-            
-            fgCtx.strokeStyle = 'rgba(100,150,255,0.4)';
-            fgCtx.lineWidth = lineThickness;
-            fgCtx.stroke();
-          }
-        } else {
-          // Normal rendering for other browsers
-          for (let i = p.history.length - 1; i >= 0; i -= (skipPoints + 1)) {
-            const pt = p.history[i];
-            const t = i / (p.history.length - 1); // 0 (newest) → 1 (oldest)
-            
-            // Interpolate blue → purple
-            const r = Math.round(0 + (160 - 0) * t);     // 0 → 160
-            const g = Math.round(200 - 100 * t);         // 200 → 100
-            const b = 255;                               // constant blue
-            
-            const radius = lineThickness;
-            const offsetX = Math.sin(i * 0.4) * curveAmount;
-            
-            fgCtx.fillStyle = `rgba(${r},${g},${b},0.6)`; // strong trail
-            fgCtx.beginPath();
-            fgCtx.arc(pt.x + offsetX, pt.y, radius, 0, Math.PI * 2);
-            fgCtx.fill();
-          }
+        // Normal rendering for supported browsers
+        for (let i = p.history.length - 1; i >= 0; i -= (skipPoints + 1)) {
+          const pt = p.history[i];
+          const t = i / (p.history.length - 1); // 0 (newest) → 1 (oldest)
+          
+          // Interpolate blue → purple
+          const r = Math.round(0 + (160 - 0) * t);     // 0 → 160
+          const g = Math.round(200 - 100 * t);         // 200 → 100
+          const b = 255;                               // constant blue
+          
+          const radius = lineThickness;
+          const offsetX = Math.sin(i * 0.4) * curveAmount;
+          
+          fgCtx.fillStyle = `rgba(${r},${g},${b},0.6)`; // strong trail
+          fgCtx.beginPath();
+          fgCtx.arc(pt.x + offsetX, pt.y, radius, 0, Math.PI * 2);
+          fgCtx.fill();
         }
           
-        // 💥 Head flare - simplified for Edge
-        if (isEdge) {
-          fgCtx.fillStyle = 'rgb(160,100,255)';
-          fgCtx.globalAlpha = 0.8;
-        } else {
-          fgCtx.fillStyle = 'rgba(160,100,255,0.8)';
-        }
-        
+        fgCtx.fillStyle = 'rgba(160,100,255,0.8)';
         fgCtx.beginPath();
-        fgCtx.arc(x, y, lineThickness * (isEdge ? 1 : 1.25), 0, Math.PI * 2);
+        fgCtx.arc(x, y, lineThickness * 1.25, 0, Math.PI * 2);
         fgCtx.fill();
-        
-        if (isEdge) {
-          fgCtx.globalAlpha = 1.0;
-        }
 
         // Reset shadow
         if (useShadows) {
@@ -273,21 +240,14 @@ export default function CanvasBackground({
         p.offset += p.speed;
         const buffer = trailLength * 5;
         if (x > width + height + buffer || y > height + buffer) {
-          p.offset = -Math.floor(Math.random() * height); // Integer offset for Edge
+          p.offset = -Math.floor(Math.random() * height);
           p.history = [];
         }
       }
 
-      // Edge-specific optimization: Use setTimeout instead of requestAnimationFrame for Edge
-      if (isEdge) {
-        animationRef.current = setTimeout(() => {
-          requestAnimationFrame(draw);
-        }, 16); // ~60fps
-      } else {
-        animationRef.current = requestAnimationFrame(draw);
-        if (skipFrames > 1) {
-          animationRef.current++;
-        }
+      animationRef.current = requestAnimationFrame(draw);
+      if (skipFrames > 1) {
+        animationRef.current++;
       }
     };
 
