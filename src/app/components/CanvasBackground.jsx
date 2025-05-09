@@ -94,28 +94,16 @@ export default function CanvasBackground({
       // Diagonal lines
       bgCtx.clearRect(0, 0, width, height);
       
-      if (isEdgeRef.current) {
-        bgCtx.strokeStyle = `rgb(${fgRGB})`;
-        bgCtx.globalAlpha = 0.075; // Use globalAlpha instead of rgba for Edge
-      } else {
-        bgCtx.strokeStyle = `rgba(${fgRGB}, 0.075)`;
-      }
-      
+      bgCtx.strokeStyle = `rgba(${fgRGB}, 0.075)`;
       bgCtx.lineWidth = lineThickness;
 
-      const effectiveLineSpacing = isEdgeRef.current ? lineSpacing * 2 : lineSpacing;
-
-      for (let i = -height; i < width + height; i += effectiveLineSpacing) {
+      for (let i = -height; i < width + height; i += lineSpacing) {
         const x1 = Math.floor(i);
         const x2 = Math.floor(i + height);
         bgCtx.beginPath();
         bgCtx.moveTo(x1, 0);
         bgCtx.lineTo(x2, height);
         bgCtx.stroke();
-      }
-
-      if (isEdgeRef.current) {
-        bgCtx.globalAlpha = 1.0;
       }
 
       // Particles - disable for problematic browsers or adjust based on performance
@@ -254,10 +242,7 @@ export default function CanvasBackground({
     draw();
 
     return () => {
-      // Edge-specific cleanup: Clear timeout if we're using setTimeout
-      if (isEdgeRef.current && typeof animationRef.current === 'number') {
-        clearTimeout(animationRef.current);
-      } else {
+      if (typeof animationRef.current === 'number') {
         cancelAnimationFrame(animationRef.current);
       }
       window.removeEventListener('resize', resize);
