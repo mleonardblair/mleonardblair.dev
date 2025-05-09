@@ -1,7 +1,6 @@
 @import "tailwindcss";
 html {
-  color-scheme: light dark;
-    scroll-behavior: smooth;
+  scroll-behavior: smooth;
   
 }
 /* Set dark mode overrides using the `html.dark` class */
@@ -25,8 +24,10 @@ html.dark {
   --font-mono: var(--font-geist-mono);
 }
 
+/* We're using class-based dark mode, so this media query is only used
+   as a fallback for initial rendering before JavaScript loads */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
     --surface: #3c3c3c; /* For navbar/footer backgrounds */
